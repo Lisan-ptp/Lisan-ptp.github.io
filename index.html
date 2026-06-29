@@ -1,832 +1,781 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  Calendar, 
-  Search, 
-  FolderOpen, 
-  FileText, 
-  MapPin, 
-  Clock, 
-  CheckCircle2, 
-  AlertTriangle, 
-  ChevronRight, 
-  Database, 
-  ExternalLink, 
-  Upload, 
-  Download,
-  Filter,
-  Info
-} from 'lucide-react';
-
-// --- DATA TIMELINE DEFAULT (Sesuai PDF "Rencana Timeline Pengadaan Tanah") ---
-const TIMELINE_DATA = [
-  {
-    id: 1,
-    kegiatan: "Rapat Koordinasi",
-    mulai: "2026-07-01",
-    selesai: "2026-07-01",
-    regulasi: "Persiapan Pelaksanaan",
-    durasi: "1 Hari",
-    status: "Selesai",
-    statusRegulasi: "Aman",
-    color: "bg-blue-500",
-    deskripsi: "Rapat awal koordinasi persiapan pelaksanaan pengadaan tanah bendungan."
-  },
-  {
-    id: 2,
-    kegiatan: "Satgas A & B (Inventarisasi)",
-    mulai: "2026-07-06",
-    selesai: "2026-07-31",
-    regulasi: "Maks. 30 Hari Kerja",
-    durasi: "26 Hari Kerja",
-    status: "Mendatang",
-    statusRegulasi: "Aman",
-    color: "bg-emerald-500",
-    deskripsi: "Pengukuran keliling batas (Satgas A) dan pendataan daftar nominatif pemilik tanaman/bangunan (Satgas B)."
-  },
-  {
-    id: 3,
-    kegiatan: "Pengumuman Hasil Data",
-    mulai: "2026-08-03",
-    selesai: "2026-08-03",
-    regulasi: "Minimal 14 Hari Kerja",
-    durasi: "1 Hari",
-    status: "Mendatang",
-    statusRegulasi: "Aman",
-    color: "bg-amber-500",
-    deskripsi: "Pengumuman peta bidang tanah (PBT) dan daftar nominatif (Danom) di kantor desa dan kecamatan."
-  },
-  {
-    id: 4,
-    kegiatan: "Masa Sanggah & Verifikasi",
-    mulai: "2026-08-04",
-    selesai: "2026-08-31",
-    regulasi: "14 Hari (Sanggah) + 14 Hari (Verif)",
-    durasi: "28 Hari",
-    status: "Mendatang",
-    statusRegulasi: "Aman",
-    color: "bg-purple-500",
-    deskripsi: "Penerimaan keberatan/sanggahan dari masyarakat dan verifikasi perbaikan data fisik maupun yuridis."
-  },
-  {
-    id: 5,
-    kegiatan: "Masa Penilaian KJPP",
-    mulai: "2026-09-01",
-    selesai: "2026-10-13",
-    regulasi: "Maks. 30 Hari Kerja",
-    durasi: "30 Hari Kerja",
-    status: "Mendatang",
-    statusRegulasi: "Aman",
-    color: "bg-indigo-500",
-    deskripsi: "Penilaian nilai ganti kerugian per bidang tanah oleh Kantor Jasa Penilai Publik independen."
-  },
-  {
-    id: 6,
-    kegiatan: "Musyawarah Ganti Rugi",
-    mulai: "2026-10-21",
-    selesai: "2026-12-02",
-    regulasi: "Maks. 30 Hari Kerja",
-    durasi: "30 Hari Kerja",
-    status: "Mendatang",
-    statusRegulasi: "Aman",
-    color: "bg-pink-500",
-    deskripsi: "Musyawarah penetapan bentuk ganti kerugian berdasarkan hasil penilaian KJPP kepada pemilik lahan."
-  },
-  {
-    id: 7,
-    kegiatan: "Pembayaran UGK",
-    mulai: "2026-12-17",
-    selesai: "2027-01-03",
-    regulasi: "Maks. 17 Hari Kalender",
-    durasi: "17 Hari Kalender",
-    status: "Mendatang",
-    statusRegulasi: "Aman",
-    color: "bg-teal-500",
-    deskripsi: "Pemberian Uang Ganti Kerugian (UGK) kepada warga yang telah sepakat dalam musyawarah."
-  }
-];
-
-// --- DATA ARSIP SAMPEL AWAL (Representatif dari File CSV yang Diunggah) ---
-const INITIAL_DIGITAL_ARCHIVES = [
-  { no: 1, desa: "TABOLANG", dusun: "KALANDO", nub: "1 B.K", nis: "78", danom: "65", nama: "Darmo", dokumen: "KTP, KK, SHM, Surat Pernyataan, Surat Keterangan", link: "https://drive.google.com/file/d/1bB08ljjuWlur6Yb-bvL5hm-9yjWB9uTy/view?usp=sharing" },
-  { no: 2, desa: "TABOLANG", dusun: "KALANDO", nub: "1 B.K", nis: "211", danom: "171", nama: "Darmo", dokumen: "KTP, KK, Surat Pernyataan, Surat Keterangan", link: "https://drive.google.com/file/d/1UklaNwEOaRrPey9dLRl8GtFbCYpGBbZC/view?usp=drive_link" },
-  { no: 3, desa: "TABOLANG", dusun: "KALANDO", nub: "1.A.K", nis: "110", danom: "97", nama: "H Mastang", dokumen: "KTP, KK, SHM", link: "" },
-  { no: 4, desa: "TABOLANG", dusun: "KALANDO", nub: "10.A.K", nis: "122", danom: "109", nama: "H Baharudding", dokumen: "KTP, KK, SHM, Surat Pemberitahuan Pajak", link: "https://drive.google.com/file/d/1n0PUt_PBpyKF4UPncHfqT5RS3vQkfXoP/view?usp=drive_link" },
-  { no: 5, desa: "TABOLANG", dusun: "KALANDO", nub: "10.B.K", nis: "92", danom: "79", nama: "Tamba B Hadu", dokumen: "KTP, KK, Surat Pernyataan, Surat Keterangan", link: "" },
-  { no: 674, desa: "SALULEKBO", dusun: "SALULEKBO", nub: "II.SL 47", nis: "222", danom: "53", nama: "H. Tajuddin", dokumen: "KTP, KK, SHM", link: "https://drive.google.com/file/d/1EohKiY-EjFE-4vzB2MtfXTzwn0H3r0-r/view?usp=drive_link" },
-  { no: 675, desa: "SALULEKBO", dusun: "SALULEKBO", nub: "II.SL 5", nis: "176", danom: "7", nama: "Gani", dokumen: "KTP, KK, SHM", link: "https://drive.google.com/file/d/1Fot8uwkqszjy7F1YxEmFP5PDdyomehr5/view?usp=drive_link" }
-];
-
-const INITIAL_PHYSICAL_ARCHIVES = [
-  { no: 1, jenis: "Berkas Dusun Kalando", lokasiDigital: "Drive Saya - Folder Arsip Pengadaan Tanah - Folder Desa Tabolang - Folder Kalando", lokasiSpreedsheet: "Link Arsip Digital !A3 - !A187", lokasiFisik: "Lemari 3 Map Folder 1 AK - 56 BK dan 1 BK - 83 BK", keterangan: "Sangat Lengkap" },
-  { no: 2, jenis: "Berkas Dusun Salurea", lokasiDigital: "Drive Saya - Folder Arsip Pengadaan Tanah - Folder Desa Tabolang - Folder Salurea", lokasiSpreedsheet: "Link Arsip Digital !A188 - !A359", lokasiFisik: "Lemari 3 Map Folder 1 AS - 74 AS dan 1 BS - 62 BS", keterangan: "Selesai di scan" },
-  { no: 3, jenis: "Berkas Dusun Tabolang", lokasiDigital: "Drive Saya - Folder Arsip Pengadaan Tanah - Folder Desa Tabolang - Folder Tabolang", lokasiSpreedsheet: "Link Arsip Digital !A360 - !A381", lokasiFisik: "Lemari 3 Folder 1 AT - 13 BT", keterangan: "Proses verifikasi fisik" },
-  { no: 4, jenis: "Berkas Dusun Karomana", lokasiDigital: "Drive Saya - Folder Arsip Pengadaan Tanah - Folder Desa Salulekbo - Folder Karomana", lokasiSpreedsheet: "Link Arsip Digital !A382 - !A552", lokasiFisik: "Lemari 3 Folder I KR 1 - I KR 74 dan II KR 1 - II KR 70", keterangan: "Arsip Lengkap" },
-  { no: 5, jenis: "Bekas Dusun Batupapan", lokasiDigital: "Drive Saya - Folder Arsip Pengadaan Tanah - Folder Desa Salulekbo - Folder Batupapan", lokasiSpreedsheet: "Link Arsip Digital !A553 - !A597", lokasiFisik: "Lemari 3 Folder I BP 1 - II BP 27", keterangan: "Selesai di scan" }
-];
-
-const INITIAL_PERSURATAN_ARCHIVES = [
-  { no: 1, nama: "DPPT Budong-Budong 2022", nomor: "-", tanggal: "11/2020", link: "https://drive.google.com/file/d/1uwLIi-uvWnvRJmkfcUBHrvha9BsuS9oh/view?usp=sharing" },
-  { no: 2, nama: "SK GUBERNUR SULBAR PENETAPAN PENLOK", nomor: "188.4/447/SULBAR/XII/2020", tanggal: "04/12/2020", link: "https://drive.google.com/file/d/12LkPKqtTAr6gYBgOkwTY0rtvognqh1r_/view?usp=sharing" },
-  { no: 3, nama: "Himbauan Sosialisasi", nomor: "AT.02.02/484-76/VI/2021", tanggal: "30/06/2021", link: "https://drive.google.com/file/d/1L5XlJBkP6h6CPzzmjt3aSbHf-1qZ4W3H/view?usp=sharing" },
-  { no: 4, nama: "SK P2T dan Sekretariat 2021", nomor: "484/SK-76.06.AT.02.02/IX/2021", tanggal: "-", link: "https://drive.google.com/file/d/1EoOPkp15AVGYb1JlU6Q2WEFn5gCVEfpW/view?usp=sharing" },
-  { no: 187, nama: "BA Kesepakatan Tindak Lanjut Pengadaan Tanah pasca SK TORA", nomor: "03/BA/Bws26/2025", tanggal: "21/02/2025", link: "https://drive.google.com/file/d/1NmsBYs5-D11dPNuMH48YOQjGWoLiTdPi/view?usp=drive_link" },
-  { no: 188, nama: "Salinan SK 101 2026 Revisi Kedua", nomor: "101/SK-76.06.AT.02.02/V/2026", tanggal: "12/05/2026", link: "https://drive.google.com/file/d/11eI5HYy1DjhlbER_EgTasko-B_dpH227/view?usp=drive_link" },
-  { no: 189, nama: "Salinan SK 101.3 2026 Satgas Eks TORA", nomor: "101.3/SK-76.06.AT.02.02/V/2026", tanggal: "12/05/2026", link: "https://drive.google.com/file/d/1ERCJv_DeopcP1LUQ90N1ZDGsyIXzfl67/view?usp=drive_link" }
-];
-
-export default function App() {
-  const [activeTab, setActiveTab] = useState('timeline'); // 'timeline' atau 'katalog'
-  const [activeSubTab, setActiveSubTab] = useState('digital'); // 'digital', 'fisik', 'persuratan'
-
-  // State untuk Data (Bisa diimpor lewat CSV parser di UI)
-  const [digitalArchives, setDigitalArchives] = useState(INITIAL_DIGITAL_ARCHIVES);
-  const [physicalArchives, setPhysicalArchives] = useState(INITIAL_PHYSICAL_ARCHIVES);
-  const [persuratanArchives, setPersuratanArchives] = useState(INITIAL_PERSURATAN_ARCHIVES);
-
-  // States Pencarian & Filtering
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterDesa, setFilterDesa] = useState('SEMUA');
-  const [filterDokumen, setFilterDokumen] = useState('SEMUA');
-
-  // CSV Drag and Drop state
-  const [importMessage, setImportMessage] = useState({ text: '', type: '' });
-
-  // Pilihan Desa Unik untuk Filter Digital Tab
-  const listDesa = useMemo(() => {
-    const desaSet = new Set(digitalArchives.map(a => a.desa).filter(Boolean));
-    return ['SEMUA', ...Array.from(desaSet)];
-  }, [digitalArchives]);
-
-  // Hitung statistik untuk Dashboard Timeline
-  const countdownDays = useMemo(() => {
-    const target = new Date("2026-07-01");
-    const today = new Date("2026-06-29"); // Tanggal sekarang sesuai system constraint
-    const diffTime = target - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
-  }, []);
-
-  // Filtered Digital Archives
-  const filteredDigital = useMemo(() => {
-    return digitalArchives.filter(item => {
-      const matchSearch = 
-        (item.nama?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (item.nub?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (item.nis?.toString() || '').includes(searchTerm) ||
-        (item.danom?.toString() || '').includes(searchTerm) ||
-        (item.dokumen?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-      
-      const matchDesa = filterDesa === 'SEMUA' || item.desa === filterDesa;
-      
-      let matchDokumen = true;
-      if (filterDokumen !== 'SEMUA') {
-        matchDokumen = (item.dokumen?.toLowerCase() || '').includes(filterDokumen.toLowerCase());
-      }
-
-      return matchSearch && matchDesa && matchDokumen;
-    });
-  }, [digitalArchives, searchTerm, filterDesa, filterDokumen]);
-
-  // Filtered Physical Archives
-  const filteredPhysical = useMemo(() => {
-    return physicalArchives.filter(item => {
-      return (
-        (item.jenis?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (item.lokasiFisik?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (item.lokasiDigital?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-      );
-    });
-  }, [physicalArchives, searchTerm]);
-
-  // Filtered Persuratan Archives
-  const filteredPersuratan = useMemo(() => {
-    return persuratanArchives.filter(item => {
-      return (
-        (item.nama?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (item.nomor?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (item.tanggal?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-      );
-    });
-  }, [persuratanArchives, searchTerm]);
-
-  // Fungsi Parser CSV Sederhana (Client-side)
-  const handleCSVUpload = (e, type) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result;
-        const lines = text.split(/\r?\n/);
-        if (lines.length < 2) {
-          showImportMessage("Format file CSV kosong atau tidak valid.", "error");
-          return;
-        }
-
-        // Ambil header
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-        const parsedRows = [];
-
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-          
-          // Penanganan koma di dalam tanda kutip ganda (regex csv standard)
-          const matches = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
-          const rowData = matches.map(val => val.trim().replace(/^"|"$/g, ''));
-
-          if (type === 'digital') {
-            // Kolom target: No, Desa, Dusun, NUB, NIS, Nomor Urut Danom, Nama Pemilik, Jenis Dokumen, Link Google Drive
-            parsedRows.push({
-              no: parsedRows.length + 1,
-              desa: rowData[1] || '',
-              dusun: rowData[2] || '',
-              nub: rowData[3] || '',
-              nis: rowData[4] || '',
-              danom: rowData[5] || '',
-              nama: rowData[6] || '',
-              dokumen: rowData[7] || 'KTP, KK, SHM',
-              link: rowData[8] || ''
-            });
-          } else if (type === 'fisik') {
-            // Kolom target: No, Jenis Dokumen, Lokasi Arsip Digital, Lokasi dalam Spreadsheet, Lokasi Penyimpanan Fisik
-            parsedRows.push({
-              no: parsedRows.length + 1,
-              jenis: rowData[1] || '',
-              lokasiDigital: rowData[2] || '',
-              lokasiSpreedsheet: rowData[3] || '',
-              lokasiFisik: rowData[4] || '',
-              keterangan: rowData[5] || 'Terverifikasi'
-            });
-          } else if (type === 'persuratan') {
-            // Kolom target: No, Nama Surat, Nomor Surat, Tanggal Surat, Link Surat
-            parsedRows.push({
-              no: parsedRows.length + 1,
-              nama: rowData[1] || '',
-              nomor: rowData[2] || '',
-              tanggal: rowData[3] || '',
-              link: rowData[4] || ''
-            });
-          }
-        }
-
-        if (type === 'digital') setDigitalArchives(parsedRows);
-        if (type === 'fisik') setPhysicalArchives(parsedRows);
-        if (type === 'persuratan') setPersuratanArchives(parsedRows);
-
-        showImportMessage(`Berhasil mengimpor ${parsedRows.length} data berkas baru!`, "success");
-      } catch (err) {
-        showImportMessage("Terjadi kesalahan saat membaca file CSV. Pastikan format kolom sesuai.", "error");
-        console.error(err);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const showImportMessage = (text, type) => {
-    setImportMessage({ text, type });
-    setTimeout(() => setImportMessage({ text: '', type: '' }), 4000);
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
-      
-      {/* --- HEADER --- */}
-      <header className="bg-gradient-to-r from-blue-800 to-indigo-900 text-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-white/10 p-2.5 rounded-lg border border-white/20">
-              <Database className="w-8 h-8 text-blue-300" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Portal Pengadaan Tanah</h1>
-              <p className="text-xs text-blue-200 mt-0.5">Sistem Monitoring Timeline & Katalog Digital Berkas Bendungan Budong-Budong</p>
-            </div>
-          </div>
-
-          {/* Navigasi Utama */}
-          <div className="flex bg-white/10 p-1 rounded-xl border border-white/10 self-start md:self-center">
-            <button
-              onClick={() => setActiveTab('timeline')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                activeTab === 'timeline'
-                  ? 'bg-white text-blue-900 shadow-md'
-                  : 'text-white hover:bg-white/5'
-              }`}
-            >
-              <Calendar className="w-4 h-4" />
-              Rencana Timeline
-            </button>
-            <button
-              onClick={() => setActiveTab('katalog')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                activeTab === 'katalog'
-                  ? 'bg-white text-blue-900 shadow-md'
-                  : 'text-white hover:bg-white/5'
-              }`}
-            >
-              <FolderOpen className="w-4 h-4" />
-              Katalog Arsip
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* --- NOTIFIKASI IMPOR / SISTEM --- */}
-      {importMessage.text && (
-        <div className={`fixed bottom-5 right-5 z-50 p-4 rounded-xl shadow-2xl flex items-center gap-3 transition-all animate-bounce ${
-          importMessage.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-        }`}>
-          {importMessage.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
-          <span className="font-medium text-sm">{importMessage.text}</span>
-        </div>
-      )}
-
-      {/* --- KONTEN UTAMA --- */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infografis Interaktif Pengadaan Tanah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Scrollbar for better UI */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        {/* ========================================================
-            TAB 1: RENCANA TIMELINE PENGADAAN TANAH
-            ======================================================== */}
-        {activeTab === 'timeline' && (
-          <div className="space-y-8 animate-fadeIn">
-            
-            {/* Widget Countdown & Statistik */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              <div className="bg-gradient-to-br from-indigo-900 to-blue-800 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden flex flex-col justify-between min-h-[160px]">
-                <div className="absolute right-0 bottom-0 opacity-10 translate-x-4 translate-y-4">
-                  <Clock className="w-48 h-48" />
-                </div>
-                <div>
-                  <span className="bg-blue-500/30 text-blue-200 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-400/20 uppercase tracking-wider">
-                    Sinyal Persiapan
-                  </span>
-                  <h3 className="text-lg font-bold mt-2">Mulai Rapat Koordinasi</h3>
-                </div>
-                <div className="mt-4 flex items-baseline gap-2">
-                  <span className="text-5xl font-black">{countdownDays}</span>
-                  <span className="text-lg text-blue-200">Hari Lagi (1 Juli 2026)</span>
-                </div>
-              </div>
+        /* Transition utility */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-              <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 flex flex-col justify-between">
-                <div>
-                  <span className="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full">
-                    Kepatuhan Regulasi
-                  </span>
-                  <h3 className="text-lg font-bold mt-2 text-slate-800">Total Durasi Rencana</h3>
-                </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <div>
-                    <span className="text-3xl font-black text-slate-800">187</span>
-                    <span className="text-sm text-slate-500 ml-1">Hari Kalender</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-semibold text-emerald-600 flex items-center gap-1 justify-end">
-                      <CheckCircle2 className="w-4 h-4" /> 100% Sesuai
-                    </span>
-                    <span className="text-xs text-slate-400">Undang-Undang No. 2/2012</span>
-                  </div>
-                </div>
-              </div>
+        /* Typography scaling variables based on wrapper class */
+        #app-wrapper.text-xl { font-size: 110%; letter-spacing: 0.02em; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
 
-              <div className="bg-white p-6 rounded-2xl shadow-md border border-slate-200 flex flex-col justify-between">
-                <div>
-                  <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full">
-                    Target Wilayah
-                  </span>
-                  <h3 className="text-lg font-bold mt-2 text-slate-800">Status Desa Terdampak</h3>
-                </div>
-                <div className="mt-4 flex gap-4 items-center">
-                  <div className="flex -space-x-2">
-                    <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center border-2 border-white text-xs">TB</div>
-                    <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center border-2 border-white text-xs">SL</div>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm text-slate-800">Tabolang & Salulekbo</h4>
-                    <p className="text-xs text-slate-400">Sertifikat Hak Milik & Eks TORA</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Rencana Jadwal / Gantt Chart Interaktif */}
-            <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
-              <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                    <Calendar className="text-blue-600" />
-                    Peta Alur Waktu Pelaksanaan Regulasi
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1">Garis alokasi hari kerja maksimal sesuai PP No. 19/2021.</p>
-                </div>
-                <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500 inline-block"></span> Persiapan</span>
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Pelaksanaan</span>
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-teal-500 inline-block"></span> Penyerahan</span>
-                </div>
-              </div>
-
-              {/* Visual Timeline Bar */}
-              <div className="p-6 overflow-x-auto">
-                <div className="min-w-[800px] space-y-6">
-                  {TIMELINE_DATA.map((item, index) => (
-                    <div key={item.id} className="grid grid-cols-12 items-center gap-4 group hover:bg-slate-50 p-2 rounded-xl transition-all duration-150">
-                      
-                      {/* Judul & Detail */}
-                      <div className="col-span-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-400 w-5">{`0${index + 1}`}</span>
-                          <div>
-                            <h4 className="font-bold text-sm text-slate-800 group-hover:text-blue-700 transition-colors">{item.kegiatan}</h4>
-                            <p className="text-xxs text-slate-400">{item.durasi}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Bar Grafik */}
-                      <div className="col-span-6 relative h-8 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
-                        <div 
-                          className={`absolute top-0 bottom-0 ${item.color} rounded-r opacity-90 transition-all duration-500 flex items-center justify-start pl-3`}
-                          style={{
-                            left: `${(index * 13)}%`,
-                            width: `${Math.max(15, 100 - (index * 13) - ((7-index) * 2))}%`
-                          }}
-                        >
-                          <span className="text-[10px] text-white font-bold tracking-wider drop-shadow-sm truncate">
-                            {item.mulai} s.d {item.selesai}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Regulasi limit */}
-                      <div className="col-span-3 flex items-center justify-between pl-4 border-l border-slate-100">
-                        <div>
-                          <p className="text-xs font-semibold text-slate-700">{item.regulasi}</p>
-                          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full mt-0.5">
-                            <CheckCircle2 className="w-3 h-3" /> {item.statusRegulasi}
-                          </span>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-transform group-hover:translate-x-1" />
-                      </div>
-
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* List Detail Tahapan Kegiatan */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {TIMELINE_DATA.map((item) => (
-                <div key={item.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-start justify-between">
-                      <span className={`w-3 h-3 rounded-full ${item.color}`}></span>
-                      <span className="text-xs font-semibold text-slate-400">{item.durasi}</span>
-                    </div>
-                    <h3 className="text-base font-bold text-slate-800 mt-3">{item.kegiatan}</h3>
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">{item.deskripsi}</p>
-                  </div>
-                  
-                  <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[10px] uppercase">Rencana Mulai</span>
-                      <strong className="text-slate-700">{item.mulai}</strong>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-slate-400 block text-[10px] uppercase">Batas Maksimal</span>
-                      <span className="font-semibold text-indigo-600">{item.regulasi}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-          </div>
-        )}
-
-        {/* ========================================================
-            TAB 2: KATALOG ARSIP
-            ======================================================== */}
-        {activeTab === 'katalog' && (
-          <div className="space-y-6 animate-fadeIn">
-            
-            {/* Header Menu Sub-Katalog */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-              
-              {/* Filter Sub-Tab */}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => { setActiveSubTab('digital'); setSearchTerm(''); }}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${
-                    activeSubTab === 'digital'
-                      ? 'bg-blue-50 text-blue-700 border-2 border-blue-600/30'
-                      : 'text-slate-600 hover:bg-slate-50 border-2 border-transparent'
-                  }`}
-                >
-                  <FileText className="w-4 h-4" />
-                  Berkas Bidang (Digital)
-                </button>
-                <button
-                  onClick={() => { setActiveSubTab('fisik'); setSearchTerm(''); }}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${
-                    activeSubTab === 'fisik'
-                      ? 'bg-blue-50 text-blue-700 border-2 border-blue-600/30'
-                      : 'text-slate-600 hover:bg-slate-50 border-2 border-transparent'
-                  }`}
-                >
-                  <MapPin className="w-4 h-4" />
-                  Penyimpanan Fisik vs Digital
-                </button>
-                <button
-                  onClick={() => { setActiveSubTab('persuratan'); setSearchTerm(''); }}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${
-                    activeSubTab === 'persuratan'
-                      ? 'bg-blue-50 text-blue-700 border-2 border-blue-600/30'
-                      : 'text-slate-600 hover:bg-slate-50 border-2 border-transparent'
-                  }`}
-                >
-                  <Calendar className="w-4 h-4" />
-                  Persuratan, PBT, & Danom
-                </button>
-              </div>
-
-              {/* CSV Upload Portal */}
-              <div className="flex items-center gap-2 self-stretch md:self-auto border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
-                <label className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer text-xs font-semibold transition-colors w-full justify-center md:w-auto">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Impor CSV Baru</span>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    className="hidden"
-                    onChange={(e) => handleCSVUpload(e, activeSubTab)}
-                  />
-                </label>
-              </div>
-
-            </div>
-
-            {/* Bilah Pencarian & Filter */}
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-              
-              <div className="relative md:col-span-2">
-                <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder={
-                    activeSubTab === 'digital' 
-                      ? 'Cari nama pemilik, NUB, dokumen...' 
-                      : activeSubTab === 'fisik' 
-                        ? 'Cari jenis dokumen, lokasi fisik...' 
-                        : 'Cari nama surat atau nomor surat...'
-                  }
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none text-sm transition-all"
-                />
-              </div>
-
-              {/* Filter Desa (Hanya aktif di Tab Digital) */}
-              {activeSubTab === 'digital' ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-slate-400" />
-                    <select
-                      value={filterDesa}
-                      onChange={(e) => setFilterDesa(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xs font-semibold text-slate-600"
-                    >
-                      {listDesa.map(desa => (
-                        <option key={desa} value={desa}>{desa === 'SEMUA' ? 'Semua Desa' : `Desa: ${desa}`}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <select
-                      value={filterDokumen}
-                      onChange={(e) => setFilterDokumen(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-xs font-semibold text-slate-600"
-                    >
-                      <option value="SEMUA">Semua Berkas Dokumen</option>
-                      <option value="SHM">Memiliki SHM</option>
-                      <option value="KTP">Memiliki KTP</option>
-                      <option value="Surat Pernyataan">Memiliki Surat Pernyataan</option>
-                    </select>
-                  </div>
-                </>
-              ) : (
-                <div className="col-span-2 text-right text-xs text-slate-400 italic">
-                  Menampilkan {activeSubTab === 'fisik' ? filteredPhysical.length : filteredPersuratan.length} entri terdaftar.
-                </div>
-              )}
-
-            </div>
-
-            {/* ==============================================
-                TAMPILAN SUB-TAB 1: DIGITAL ARCHIVES
-                ============================================== */}
-            {activeSubTab === 'digital' && (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider border-b border-slate-100">
-                        <th className="py-4 px-6 text-center w-16">No</th>
-                        <th className="py-4 px-6">Identitas Bidang</th>
-                        <th className="py-4 px-6">Pemilik Utama</th>
-                        <th className="py-4 px-6">Jenis Dokumen Pendukung</th>
-                        <th className="py-4 px-6 text-center w-40">Dokumen Digital</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-                      {filteredDigital.length > 0 ? (
-                        filteredDigital.map((item) => (
-                          <tr key={item.no} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="py-4 px-6 text-center text-slate-400 font-medium">{item.no}</td>
-                            <td className="py-4 px-6">
-                              <div className="font-semibold text-slate-800">{item.desa}</div>
-                              <div className="text-xs text-slate-400 mt-0.5">{item.dusun || 'Dusun Umum'} • NUB: <span className="font-bold text-slate-600">{item.nub || '-'}</span></div>
-                              <div className="flex gap-2 mt-1.5">
-                                <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">NIS: {item.nis || '-'}</span>
-                                <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded font-mono">Danom: {item.danom || '-'}</span>
-                              </div>
-                            </td>
-                            <td className="py-4 px-6 font-semibold text-blue-900">
-                              {item.nama}
-                            </td>
-                            <td className="py-4 px-6">
-                              <div className="flex flex-wrap gap-1 max-w-sm">
-                                {item.dokumen.split(',').map((doc, i) => (
-                                  <span key={i} className="bg-emerald-50 text-emerald-700 text-[10px] font-semibold px-2 py-1 rounded-md border border-emerald-100">
-                                    {doc.trim()}
-                                  </span>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="py-4 px-6 text-center">
-                              {item.link ? (
-                                <a
-                                  href={item.link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
-                                >
-                                  Buka Drive <ExternalLink className="w-3.5 h-3.5" />
-                                </a>
-                              ) : (
-                                <span className="text-xs text-slate-400 italic">Link Belum Tersedia</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="5" className="py-12 text-center text-slate-400">
-                            Tidak ada berkas yang cocok dengan pencarian Anda.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* ==============================================
-                TAMPILAN SUB-TAB 2: PHYSICAL VS DIGITAL
-                ============================================== */}
-            {activeSubTab === 'fisik' && (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider border-b border-slate-100">
-                        <th className="py-4 px-6 text-center w-16">No</th>
-                        <th className="py-4 px-6">Jenis Dokumen Dusun</th>
-                        <th className="py-4 px-6">Lokasi Penyimpanan Fisik</th>
-                        <th className="py-4 px-6">Jalur Folder Cloud Digital</th>
-                        <th className="py-4 px-6">Keterangan Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-                      {filteredPhysical.length > 0 ? (
-                        filteredPhysical.map((item) => (
-                          <tr key={item.no} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="py-4 px-6 text-center text-slate-400 font-medium">{item.no}</td>
-                            <td className="py-4 px-6 font-bold text-slate-800">{item.jenis}</td>
-                            <td className="py-4 px-6">
-                              <span className="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-2.5 py-1.5 rounded-lg font-semibold inline-block">
-                                {item.lokasiFisik}
-                              </span>
-                            </td>
-                            <td className="py-4 px-6 text-xs text-slate-500 font-mono">
-                              {item.lokasiDigital}
-                            </td>
-                            <td className="py-4 px-6">
-                              <span className="bg-blue-50 text-blue-700 text-xs font-semibold px-2 py-1 rounded">
-                                {item.keterangan}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="5" className="py-12 text-center text-slate-400">
-                            Tidak ada berkas penyimpanan yang ditemukan.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* ==============================================
-                TAMPILAN SUB-TAB 3: PERSURATAN & DOKUMEN RESMI
-                ============================================== */}
-            {activeSubTab === 'persuratan' && (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider border-b border-slate-100">
-                        <th className="py-4 px-6 text-center w-16">No</th>
-                        <th className="py-4 px-6">Nama Dokumen / Surat Keputusan</th>
-                        <th className="py-4 px-6">Nomor Identitas Surat</th>
-                        <th className="py-4 px-6">Tanggal Rilis</th>
-                        <th className="py-4 px-6 text-center w-40 font-bold">Arsip Digital</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-                      {filteredPersuratan.length > 0 ? (
-                        filteredPersuratan.map((item) => (
-                          <tr key={item.no} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="py-4 px-6 text-center text-slate-400 font-medium">{item.no}</td>
-                            <td className="py-4 px-6">
-                              <div className="font-bold text-slate-800">{item.nama}</div>
-                            </td>
-                            <td className="py-4 px-6">
-                              <span className="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
-                                {item.nomor}
-                              </span>
-                            </td>
-                            <td className="py-4 px-6 text-slate-500 font-semibold">{item.tanggal}</td>
-                            <td className="py-4 px-6 text-center">
-                              {item.link ? (
-                                <a
-                                  href={item.link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
-                                >
-                                  Buka File <ExternalLink className="w-3.5 h-3.5" />
-                                </a>
-                              ) : (
-                                <span className="text-xs text-slate-400 italic">Belum Diunggah</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="5" className="py-12 text-center text-slate-400">
-                            Tidak ada persuratan resmi yang ditemukan.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Info Box untuk Pengguna */}
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex gap-3 text-sm text-blue-800 leading-relaxed">
-              <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-              <div>
-                <strong className="font-semibold block mb-0.5">Petunjuk Impor Data Mandiri:</strong>
-                Anda dapat memperbarui tabel-tabel di atas menggunakan file CSV baru kapan saja. Gunakan tombol "Impor CSV Baru" di sebelah kanan atas sub-tab. Sistem akan menyesuaikan layout berdasarkan tab katalog yang sedang aktif.
-              </div>
-            </div>
-
-          </div>
-        )}
-
-      </main>
-
-      {/* --- FOOTER --- */}
-      <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 text-center text-xs">
-        <div className="max-w-7xl mx-auto px-4">
-          <p>© 2026 Portal Pengadaan Tanah - Bendungan Budong-Budong. Seluruh hak cipta dilindungi.</p>
-          <p className="mt-1 text-slate-600">Sistem terverifikasi sesuai Regulasi UU No. 2/2012 & PP No. 19/2021</p>
-        </div>
-      </footer>
-
+    <div id="toast-alert" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-700 transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+        <span class="text-amber-400">💡</span>
+        <span id="toast-message" class="text-xs font-semibold"></span>
     </div>
-  );
-}
+
+    <div id="app-wrapper" class="">
+        
+        <div class="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-semibold flex flex-wrap justify-between items-center gap-3 border-b border-amber-600 sticky top-0 z-40 shadow-md">
+            <div class="flex items-center gap-1.5">
+                <span class="text-base">👵🏽👴🏼</span>
+                <span>Bantuan Akses Warga & Pihak yang Berhak (PYB) :</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-4">
+                <button id="btn-toggle-jargon" class="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 transition-all bg-white/80 hover:bg-white text-slate-900">
+                    😊 Gunakan Bahasa Sederhana
+                </button>
+                <div class="flex items-center gap-1 bg-white/40 p-0.5 rounded-lg">
+                    <span class="text-[10px] px-1 text-slate-700">Ukuran Huruf:</span>
+                    <button id="btn-ts-normal" class="ts-btn px-2 py-0.5 rounded text-[10px] font-bold bg-slate-950 text-white">Kecil</button>
+                    <button id="btn-ts-large" class="ts-btn px-2 py-0.5 rounded text-[10px] font-bold bg-white/60 hover:bg-white">Sedang</button>
+                    <button id="btn-ts-xl" class="ts-btn px-2 py-0.5 rounded text-[10px] font-bold bg-white/60 hover:bg-white">Besar</button>
+                </div>
+            </div>
+        </div>
+
+        <header class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl">
+            <div class="max-w-7xl mx-auto px-4 py-6 md:py-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-amber-500 text-slate-950 font-semibold px-2.5 py-0.5 rounded text-xs uppercase tracking-wider">
+                                Skenario Proyek 2026/2027
+                            </span>
+                            <span class="text-slate-300 text-sm">UU No. 2 TAHUN 2012</span>
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-black tracking-tight" id="main-title">
+                            Infografis Interaktif Pengadaan Tanah
+                        </h1>
+                        <p class="text-slate-300 text-xs md:text-sm mt-1 max-w-2xl">
+                            Didesain khusus agar mudah diakses secara mandiri oleh masyarakat pemilik tanah, tokoh adat, serta pelaksana lapangan.
+                        </p>
+                    </div>
+                    <button onclick="switchTab('sanggahGuide')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2.5 rounded-lg text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-amber-500/20">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        Ada Sanggahan? Temukan Alur Solusi
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 py-6 md:py-8">
+
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 md:p-6 mb-8">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="lg:max-w-xs">
+                        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <span class="flex h-3.5 w-3.5 relative">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-indigo-600"></span>
+                            </span>
+                            Simulasi Tanggal Berjalan
+                        </h2>
+                        <p class="text-slate-500 text-xs mt-1">
+                            Geser slider ini untuk melihat perkembangan proyek dari waktu ke waktu secara instan.
+                        </p>
+                        <div class="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-center">
+                            <div class="text-xs text-indigo-700 font-semibold uppercase tracking-wider">Simulasi Tanggal Hari Ini</div>
+                            <div id="sim-date-display" class="text-xl font-extrabold text-indigo-950 mt-1">...</div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 md:p-6">
+                        <div class="flex justify-between items-center text-xs text-slate-500 font-medium mb-3">
+                            <span>Awal Proyek (25 Juni 2026)</span>
+                            <span>Akhir Proyek (10 April 2027)</span>
+                        </div>
+                        <input type="range" id="sim-slider" min="0" max="100" value="0" class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"/>
+                        <div class="flex flex-wrap justify-between items-center gap-2 mt-4 text-xs text-slate-500 pt-3 border-t border-slate-200/60">
+                            <span class="flex items-center gap-1.5 font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+                                <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                                <span id="stat-completed">0</span> Selesai
+                            </span>
+                            <span class="flex items-center gap-1.5 font-semibold text-amber-700 bg-amber-50 px-2 py-1 rounded animate-pulse">
+                                <span class="h-2 w-2 rounded-full bg-amber-500"></span>
+                                <span id="stat-active">0</span> Berjalan
+                            </span>
+                            <span class="flex items-center gap-1.5 font-semibold text-slate-600 bg-slate-100 px-2 py-1 rounded">
+                                <span class="h-2 w-2 rounded-full bg-slate-400"></span>
+                                <span id="stat-upcoming">0</span> Antre
+                            </span>
+                            <button onclick="resetSlider()" class="ml-auto text-indigo-600 hover:text-indigo-800 hover:underline font-bold text-xs">
+                                Kembali ke Hari Pertama
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="p-3 rounded-lg bg-indigo-50 text-indigo-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                    <div>
+                        <div class="text-xs text-slate-500 font-medium">Lama Pelaksanaan</div>
+                        <div class="text-lg font-bold text-slate-900" id="stat-total-days">- Hari Kerja</div>
+                        <div class="text-xs text-slate-400 mt-0.5">Juli 2026 - Maret 2027</div>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="p-3 rounded-lg bg-amber-50 text-amber-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
+                    <div class="overflow-hidden">
+                        <div class="text-xs text-slate-500 font-medium">Kegiatan Hari Ini</div>
+                        <div class="text-xs font-bold text-amber-700 truncate max-w-[180px]" id="stat-current-task">-</div>
+                        <div class="text-xs text-slate-400 mt-0.5">Sesuai simulasi kalender</div>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="p-3 rounded-lg bg-emerald-50 text-emerald-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                    <div>
+                        <div class="text-xs text-slate-500 font-medium">Kemajuan Kumulatif</div>
+                        <div class="text-lg font-bold text-emerald-700" id="stat-progress">-</div>
+                        <div class="text-xs text-slate-400 mt-0.5" id="stat-progress-sub">-</div>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="p-3 rounded-lg bg-purple-50 text-purple-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg></div>
+                    <div>
+                        <div class="text-xs text-slate-500 font-medium">Prinsip Pengadaan</div>
+                        <div class="text-xs font-bold text-purple-900 truncate max-w-[180px]">Asas Adil & Keterbukaan</div>
+                        <div class="text-xs text-slate-400 mt-0.5">Tanpa ganti rugi ditutup-tutupi</div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="border-b border-slate-200 mb-6 flex flex-wrap gap-2" id="tab-controls">
+                <button data-tab="timeline" class="tab-btn px-5 py-3 font-bold text-xs md:text-sm transition-all duration-150 border-b-2 flex items-center gap-2 border-indigo-600 text-indigo-600 bg-indigo-50/40">🗺️ Peta Perjalanan Warga (Timeline)</button>
+                <button data-tab="gantt" class="tab-btn px-5 py-3 font-bold text-xs md:text-sm transition-all duration-150 border-b-2 flex items-center gap-2 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100">📊 Bagan Rencana Kerja (Gantt Chart)</button>
+                <button data-tab="sanggahGuide" class="tab-btn px-5 py-3 font-bold text-xs md:text-sm transition-all duration-150 border-b-2 flex items-center gap-2 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100">⚠️ Cara Sanggah & Sengketa</button>
+                <button data-tab="shareAccess" class="tab-btn px-5 py-3 font-bold text-xs md:text-sm transition-all duration-150 border-b-2 flex items-center gap-2 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100">📲 Bagikan & Akses Luar Jaringan</button>
+            </div>
+
+            <div id="tab-content-container">
+                
+                <div id="tab-timeline" class="tab-pane fade-in">
+                    <div class="flex flex-col gap-6">
+                        
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3">
+                            <div class="flex-1">
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Cari Kegiatan</label>
+                                <input type="text" id="search-input" placeholder="Ketik kata kunci (misal: 'ukur', 'sertifikat', 'bayar')..." class="w-full mt-1 border border-slate-200 rounded-lg p-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                            </div>
+                            <div class="md:w-64">
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Kategori Tahap</label>
+                                <select id="filter-category" class="w-full mt-1 border border-slate-200 rounded-lg p-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    </select>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex items-center gap-2 mb-3">
+                                <h3 class="text-sm font-bold text-slate-800">Geser untuk melihat urutan tahapan 👉</h3>
+                                <span class="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">Ketuk kartu untuk melihat detail</span>
+                            </div>
+                            <div id="timeline-list" class="flex flex-row gap-4 overflow-x-auto pb-6 pt-2 px-2 custom-scrollbar snap-x snap-mandatory">
+                                </div>
+                        </div>
+                        
+                        <div>
+                            <div class="bg-white rounded-2xl border border-slate-200 shadow-lg p-6 md:p-8" id="detail-panel">
+                                </div>
+                        </div>
+                        
+                    </div>
+                </div>
+
+                <div id="tab-gantt" class="tab-pane hidden fade-in">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 md:p-6 overflow-x-auto">
+                        <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">📊 Rencana Batang Waktu (Akses Proyek untuk Semua Orang)</h3>
+                        <div class="min-w-[800px] border border-slate-150 rounded-xl overflow-hidden">
+                            <div class="grid grid-cols-10 bg-slate-100 text-center border-b border-slate-200 font-semibold text-xs text-slate-600 py-3">
+                                <div class="col-span-3 text-left pl-4 font-bold border-r border-slate-200">Tahapan / Prosedur Kegiatan</div>
+                                <div class="col-span-1">Jul '26</div>
+                                <div class="col-span-1">Agu '26</div>
+                                <div class="col-span-1">Sep '26</div>
+                                <div class="col-span-1">Okt '26</div>
+                                <div class="col-span-1">Nov '26</div>
+                                <div class="col-span-1">Des '26</div>
+                                <div class="col-span-1">Jan '27</div>
+                                <div class="col-span-1">Mar '27</div>
+                            </div>
+                            <div id="gantt-rows" class="divide-y divide-slate-100">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-sanggahGuide" class="tab-pane hidden fade-in">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 md:p-6">
+                        <div class="max-w-3xl mx-auto">
+                            <div class="text-center mb-8">
+                                <span class="bg-amber-100 text-amber-800 font-bold px-3 py-1 rounded text-xs uppercase tracking-wider">Modul Pendamping Sengketa & Sanggahan</span>
+                                <h3 class="text-2xl font-black text-slate-900 mt-2">Bagaimana Menghadapi Sanggahan Hasil Pengumuman?</h3>
+                                <p class="text-slate-500 text-sm mt-1">Panduan langkah demi langkah berdasarkan jenis kekeliruan data fisik maupun yuridis saat Masa Sanggah (03 Agustus - 16 Agustus 2026).</p>
+                            </div>
+                            
+                            <div id="scenario-buttons" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
+                                </div>
+                            
+                            <div id="scenario-detail" class="bg-slate-50 rounded-2xl border border-slate-100 p-6">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-shareAccess" class="tab-pane hidden fade-in">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="text-2xl">📲</span>
+                                    <h4 class="font-bold text-slate-900 text-lg">Penyebaran Informasi via WhatsApp</h4>
+                                </div>
+                                <p class="text-xs text-slate-600 mb-4">Kirimkan pemberitahuan otomatis jadwal proyek yang sedang aktif ke grup WhatsApp warga desa, RT, atau RW setempat agar tidak ada pihak yang melewatkan masa sanggah.</p>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="text-xs font-bold text-slate-500 uppercase">Nomor WhatsApp Penerima (Opsional)</label>
+                                        <input type="text" id="wa-phone" placeholder="Contoh: 628123456789" class="w-full mt-1 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                        <span class="text-[10px] text-slate-400">Kosongkan jika ingin memilih kontak manual langsung di dalam aplikasi WhatsApp.</span>
+                                    </div>
+                                    <div class="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600">
+                                        <span class="font-bold block mb-1 text-slate-800">Preview Pesan yang Akan Dikirim:</span>
+                                        <p id="wa-preview" class="whitespace-pre-line bg-slate-50 p-2.5 rounded border border-slate-100 italic">
+                                            </p>
+                                    </div>
+                                    <a id="wa-link" href="#" target="_blank" onclick="showToast('📲 Membuka WhatsApp...')" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-sm text-center block transition-all shadow-md shadow-emerald-600/10">
+                                        💬 Sebarkan Pembaruan ke WhatsApp Warga
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-6">
+                                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex items-start gap-4">
+                                    <div class="flex-1">
+                                        <h4 class="font-bold text-slate-900 text-sm mb-1">Cetak QR Code pada Surat Undangan</h4>
+                                        <p class="text-xs text-slate-500 leading-relaxed mb-3">BPN dapat mencetak QR Code di samping pada setiap surat undangan pertemuan atau selebaran warga. Warga cukup memindai dengan kamera HP untuk masuk langsung ke aplikasi infografis interaktif ini tanpa mengetik alamat situs.</p>
+                                        <button onclick="window.print()" class="px-3 py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded text-xs hover:bg-indigo-100 transition-all">
+                                            🖨️ Cetak Lembar Info & QR Code
+                                        </button>
+                                    </div>
+                                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm text-center flex-shrink-0">
+                                        <div class="w-24 h-24 bg-slate-100 border-2 border-slate-900 rounded p-1 flex flex-col justify-between relative overflow-hidden">
+                                            <div class="absolute inset-0 opacity-15 bg-cover" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'><rect x=\'0\' y=\'0\' width=\'30\' height=\'30\' fill=\'black\'/><rect x=\'70\' y=\'0\' width=\'30\' height=\'30\' fill=\'black\'/><rect x=\'0\' y=\'70\' width=\'30\' height=\'30\' fill=\'black\'/><rect x=\'40\' y=\'40\' width=\'20\' height=\'20\' fill=\'black\'/></svg>')"></div>
+                                            <div class="flex justify-between"><span class="w-5 h-5 bg-slate-950 rounded-sm"></span><span class="w-5 h-5 bg-slate-950 rounded-sm"></span></div>
+                                            <div class="flex justify-center my-1"><span class="w-4 h-4 bg-slate-950 rounded-sm"></span></div>
+                                            <div class="flex justify-between items-end"><span class="w-5 h-5 bg-slate-950 rounded-sm"></span><span class="w-3 h-3 bg-indigo-600 rounded-sm animate-pulse"></span></div>
+                                        </div>
+                                        <span class="text-[9px] text-slate-400 block mt-1.5 font-bold uppercase tracking-wider">Pindai Info</span>
+                                    </div>
+                                </div>
+                                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+                                    <h4 class="font-bold text-amber-900 text-sm mb-2 flex items-center gap-1.5"><span>📌</span> Strategi Akses PYB / Offline:</h4>
+                                    <ul class="space-y-2 text-xs text-amber-950 list-disc pl-4">
+                                        <li><strong>Penempelan di Balai Desa:</strong> Ekspor daftar nominatif ke format PDF/Print, cetak ukuran besar (A3), lalu tempel di dinding pengumuman balai desa tempat kumpul warga.</li>
+                                        <li><strong>Kader Desa Digital:</strong> Tunjuk pemuda karang taruna desa memegang tablet/HP untuk melayani konsultasi warga sepuh di kantor kelurahan.</li>
+                                        <li><strong>Dokumentasi Bukti Foto Fisik:</strong> Mintalah ketua RT membantu warga memotret berkas kepemilikan sebelum diajukan ke loket sanggahan BPN.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <footer class="bg-slate-900 text-slate-400 py-8 border-t border-slate-800 mt-12 text-center text-xs">
+            <div class="max-w-7xl mx-auto px-4">
+                <p>© 2026 Proyek Pengadaan Lahan & Pembebasan Lahan Negara. Seluruh Hak Cipta Dilindungi.</p>
+                <p class="mt-1 text-slate-500">Dibuat menggunakan asas keterbukaan informasi publik dan akuntabilitas sesuai UU KIP No. 14 Tahun 2008.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // --- DATA JADWAL PENGADAAN TANAH ---
+        const RAW_TIMELINE = [
+            { id: 1, title: "Rapat koordinasi", simpleTitle: "Rapat Persiapan Tim", start: "2026-07-01", end: "2026-07-01", category: "Persiapan", desc: "Pertemuan koordinasi awal menyelaraskan instansi terkait, instansi pengusul, dan BPN untuk menetapkan langkah taktis pelaksanaan pengadaan tanah.", simpleDesc: "Rapat awal antara pemerintah, Badan Pertanahan Nasional (BPN), dan pihak proyek untuk menyusun rencana pembebasan lahan agar berjalan aman dan lancar.", law: "Pasal 15 UU No. 2/2012 jo. PP No. 19/2021", checklist: ["Penyiapan dokumen perencanaan", "Penyelarasan peta rencana proyek", "Penyusunan anggaran awal pelaksana"] },
+            { id: 2, title: "Sinkronisasi Data Satgas A dan Satgas B", simpleTitle: "Pencocokan Data Tanah & Pemilik", start: "2026-07-06", end: "2026-07-31", category: "Inventarisasi", desc: "Proses penggabungan data fisik hasil pengukuran luas tanah & bangunan (Satgas A) dengan data yuridis kepemilikan/surat tanah (Satgas B) menjadi draf Daftar Nominatif.", simpleDesc: "Menggabungkan hasil ukur luas tanah & bangunan dengan dokumen kepemilikan (seperti sertifikat/surat girik) warga agar datanya cocok dan tidak tertukar.", law: "Pasal 20 UU No. 2/2012", checklist: ["Pengukuran keliling batas tanah", "Pendataan jumlah ruangan & jenis bangunan", "Verifikasi berkas sertifikat/letter C"] },
+            { id: 3, title: "Pengumuman Hasil Inventarisasi", simpleTitle: "Pengumuman Data Hasil Ukur", start: "2026-08-03", end: "2026-08-03", category: "Pengumuman", desc: "Publikasi Daftar Nominatif dan Peta Bidang secara resmi di Kantor Kelurahan/Desa, Kecamatan, dan lokasi proyek agar dapat diperiksa oleh masyarakat luas.", simpleDesc: "Hasil pengukuran tanah dan nama pemilik ditempel di Kantor Balai Desa/Kelurahan agar semua warga bisa memeriksa apakah datanya sudah benar.", law: "Pasal 22 UU No. 2/2012", checklist: ["Pemasangan daftar nominatif di papan pengumuman desa", "Publikasi peta bidang tanah", "Pembukaan posko pengaduan masyarakat"] },
+            { id: 4, title: "Masa Sanggah", simpleTitle: "Waktu Protes / Koreksi Data", start: "2026-08-03", end: "2026-08-16", category: "Sanggahan", desc: "Kesempatan krusial bagi warga pemilik tanah untuk mengajukan keberatan secara tertulis jika menemukan kesalahan data luas tanah, batas, bangunan, atau tanaman.", simpleDesc: "Batas waktu 14 hari bagi warga untuk mengajukan protes tertulis jika ada kesalahan ukuran tanah, jumlah pohon, atau nama pemilik yang salah di pengumuman.", law: "Pasal 23 UU No. 2/2012", checklist: ["Penerimaan berkas sanggahan warga", "Verifikasi bukti awal kepemilikan", "Pemberian tanda terima berkas sanggah resmi"], highlight: true },
+            { id: 5, title: "Pengumuman Hasil Sanggah", simpleTitle: "Pengumuman Data Perbaikan", start: "2026-08-17", end: "2026-08-17", category: "Pengumuman", desc: "Penyampaian hasil keputusan verifikasi tim pelaksana atas sanggahan warga. Data yang terbukti salah akan dibetulkan dan diumumkan kembali.", simpleDesc: "Pemerintah mengumumkan kembali data tanah warga yang sudah diperbaiki berdasarkan laporan protes yang masuk sebelumnya.", law: "PP No. 19/2021", checklist: ["Penyusunan Berita Acara Perbaikan Data", "Pemberitahuan resmi penolakan/penerimaan sanggah", "Finalisasi Daftar Nominatif Bersih"] },
+            { id: 6, title: "Pemilihan dan Penunjukan KJPP", simpleTitle: "Penunjukan Penilai Harga Independen", start: "2026-08-18", end: "2026-08-31", category: "Penilaian", desc: "Proses seleksi dan penunjukan Kantor Jasa Penilai Publik (KJPP) independen yang bertugas menilai harga ganti rugi wajar secara obyektif.", simpleDesc: "Memilih tim penilai harga tanah profesional yang independen (bukan dari pemerintah) agar penaksiran harga ganti rugi adil bagi warga.", law: "Pasal 31-32 UU No. 2/2012", checklist: ["Evaluasi kualifikasi rekam jejak KJPP", "Penandatanganan kontrak kerja", "Penyerahan berkas final Daftar Nominatif ke KJPP"] },
+            { id: 7, title: "Penilaian", simpleTitle: "Penaksiran Harga Aset & Lahan", start: "2026-09-01", end: "2026-09-30", category: "Penilaian", desc: "KJPP turun langsung ke lapangan menilai aset warga mencakup nilai fisik (tanah, bangunan, tanaman) dan non-fisik (kehilangan pekerjaan, solatium emosional, biaya pindah).", simpleDesc: "Tim penilai mendatangi rumah warga untuk menghitung harga ganti rugi tanah, bangunan, tanaman, biaya pindah rumah, hingga ganti rugi hilangnya usaha/pekerjaan.", law: "Pasal 33-34 UU No. 2/2012", checklist: ["Survei lapangan dan wawancara pemilik", "Analisis transaksi pasar sekitar lokasi", "Perhitungan nilai ganti kerugian per bidang"] },
+            { id: 8, title: "Ekspos Hasil Penilaian", simpleTitle: "Penyampaian Laporan Taksiran Harga", start: "2026-10-01", end: "2026-10-09", category: "Penilaian", desc: "KJPP mempresentasikan metodologi dan kesimpulan nilai kepada Ketua Pelaksana Pengadaan Tanah (BPN) untuk persiapan penawaran musyawarah.", simpleDesc: "Tim penilai menyerahkan dan menjelaskan rincian hitungan nilai ganti kerugian kepada BPN sebelum dibagikan ke warga.", law: "Aturan Pelaksana Kementerian ATR/BPN", checklist: ["Review konsistensi penilaian antar bidang", "Penyerahan dokumen laporan penilaian resmi", "Penyusunan strategi pelaksanaan musyawarah"] },
+            { id: 9, title: "Musyawarah Bentuk Ganti Kerugian", simpleTitle: "Rapat Sepakat Bentuk Ganti Rugi", start: "2026-10-12", end: "2026-10-23", category: "Musyawarah", desc: "Pertemuan resmi dengan warga pemilik tanah untuk menyepakati bentuk ganti rugi (Uang tunai, tanah pengganti, pemukiman kembali, atau kepemilikan saham).", simpleDesc: "Pertemuan antara warga dan pemerintah untuk menyepakati jenis ganti rugi, apakah mau berupa Uang Tunai, Rumah Baru, Tanah Pengganti, atau Saham.", law: "Pasal 37 UU No. 2/2012", checklist: ["Penyampaian amplop nilai taksiran KJPP ke warga", "Pengisian formulir kesepakatan bentuk ganti rugi", "Penandatanganan Berita Acara Kesepakatan"] },
+            { id: 10, title: "Validasi Pembayaran UGK/Penitipan UGK", simpleTitle: "Pengecekan Berkas / Penitipan Uang di Pengadilan", start: "2026-10-23", end: "2026-11-06", category: "Administrasi", desc: "Verifikasi dokumen administrasi bagi warga yang setuju untuk pencairan, atau menyiapkan proses hukum penitipan uang di pengadilan (Konsinyasi) jika ada sengketa.", simpleDesc: "Memeriksa kelengkapan surat untuk mencairkan uang ganti rugi. Bagi warga yang bersengketa/menolak tanpa dasar hukum, uangnya dititipkan aman di Pengadilan Negeri.", law: "Pasal 42 UU No. 2/2012", checklist: ["Pemberkasan dokumen pembayaran", "Penyusunan berkas permohonan konsinyasi ke PN", "Validasi akhir kesesuaian data rekening penerima"] },
+            { id: 11, title: "Validasi di LMAN", simpleTitle: "Persetujuan Dana Pusat (Khusus PSN)", start: "2026-11-06", end: "2026-11-30", category: "LMAN", desc: "Khusus Proyek Strategis Nasional (PSN), dokumen diajukan ke Lembaga Manajemen Aset Negara (LMAN) untuk mendapat persetujuan pembayaran dana dari APBN.", simpleDesc: "Pengecekan berkas oleh Lembaga Manajemen Aset Negara agar uang pembayaran dari kas negara (APBN) bisa dicairkan dengan aman.", law: "Perpres Terkait Pendanaan PSN oleh LMAN", checklist: ["Unggah dokumen digital ke sistem LMAN", "Review kelayakan administrasi oleh verifikator LMAN", "Penerbitan Surat Persetujuan Pembayaran (SPP)"] },
+            { id: 12, title: "Pembayaran UGK", simpleTitle: "Pencairan Uang Ganti Rugi", start: "2026-12-07", end: "2026-12-22", category: "Pembayaran", desc: "Pemberian dana ganti kerugian secara langsung kepada warga yang berhak melalui transfer bank tanpa potongan apapun.", simpleDesc: "Warga menerima transfer langsung uang ganti rugi ke rekening masing-masing di bank tanpa ada potongan sepeser pun.", law: "Pasal 40 UU No. 2/2012", checklist: ["Penyerahan buku tabungan dan kartu ATM khusus", "Pemberian tanda terima pembayaran sah", "Pelepasan penguasaan fisik tanah"] },
+            { id: 13, title: "Pendaftaran Pelepasan Hak", simpleTitle: "Penyerahan Sertifikat Tanah ke Negara", start: "2027-01-04", end: "2027-01-15", category: "Sertifikasi", desc: "Peralihan status hak tanah dari warga kepada negara secara hukum. Sertifikat asli dicatat pelepasan haknya di buku tanah BPN.", simpleDesc: "Mengubah status sertifikat tanah warga menjadi milik negara secara resmi agar proyek pembangunan infrastruktur bisa dimulai secara legal.", law: "Pasal 43 UU No. 2/2012", checklist: ["Penyerahan sertifikat asli/bukti alas hak asli", "Pemberian stempel pelepasan hak pada buku tanah", "Pendaftaran aset baru atas nama Pemerintah RI"] },
+            { id: 14, title: "Penyerahan Hasil", simpleTitle: "Serah Terima Lahan Siap Bangun", start: "2027-03-20", end: "2027-03-30", category: "Selesai", desc: "Penyerahan resmi seluruh bidang tanah yang telah dibebaskan dari BPN ke instansi pemohon tanah untuk segera dimulai tahap konstruksi bangunan.", simpleDesc: "BPN menyerahkan tanah kosong yang sudah dibayar lunas kepada pelaksana proyek (Kementerian/BUMN) agar bisa langsung dibangun fisik jalannya.", law: "Pasal 47 UU No. 2/2012", checklist: ["Pemeriksaan kebersihan lahan di lapangan", "Penandatanganan Berita Acara Penyerahan Hasil", "Penyerahan dokumen arsip lengkap proyek"] }
+        ];
+
+        const SANGGAHAN_SCENARIOS = [
+            { id: "sc-1", title: "Sanggahan Luas & Batas Tanah (Data Fisik)", icon: `<svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>`, issue: "Warga mendapati luas tanah yang diumumkan di Daftar Nominatif lebih kecil dibanding sertifikat asli, atau batas tanah bergeser.", action: ["Siapkan fotokopi Sertifikat Hak Milik (SHM) / Girik / Surat Ukur asli.", "Tulis surat sanggahan yang ditujukan ke Ketua Pelaksana Pengadaan Tanah (BPN setempat).", "Lampirkan peta ukur mandiri jika ada, atau tandai batas yang keliru di lapangan.", "Satgas A akan diterjunkan kembali untuk mengukur ulang batas bersama pemilik tanah dan pemilik tetangga yang berbatasan langsung."] },
+            { id: "sc-2", title: "Sanggahan Hak Kepemilikan & Waris (Data Yuridis)", icon: `<svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>`, issue: "Nama yang tercantum dalam pengumuman adalah pemilik lama yang sudah meninggal, atau ada klaim waris ganda atas satu bidang tanah.", action: ["Tunjukkan dokumen bukti silsilah keluarga (Surat Keterangan Waris dari Kecamatan/Notaris).", "Ajukan sanggup tunda bayar atau revisi nama dalam Daftar Nominatif.", "Jika sengketa kepemilikan antar keluarga/pihak lain buntu, BPN akan merekomendasikan gugat perdata atau penyelesaian mediasi formal.", "Uang ganti rugi akan dititipkan (Konsinyasi) di Pengadilan Negeri selama sengketa berlangsung agar proyek tetap berjalan."] },
+            { id: "sc-3", title: "Sanggahan Jumlah Bangunan & Tanaman (Tegakan)", icon: `<svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>`, issue: "Jumlah pohon produktif (misal: sawit, jati) atau bangunan tambahan (misal: kanopi, pagar beton) belum terdaftar dalam lembar inventarisasi.", action: ["Ambil foto bukti fisik bangunan atau tanaman yang tidak tercantum.", "Buat rincian tabel hitung mandiri mengenai jenis tanaman, diameter, dan jumlahnya.", "Ajukan bukti foto dan tabel tersebut bersama surat sanggah resmi.", "Satgas A / Satgas B akan mencocokkan foto dengan data lapangan dan mengesahkan penambahan dalam Berita Acara Perbaikan."] }
+        ];
+
+        // --- APP STATE ---
+        let state = {
+            simOffset: 0,
+            simulatedDateStr: "",
+            selectedTaskId: 4,
+            activeTab: "timeline",
+            activeScenario: "sc-1",
+            searchQuery: "",
+            filterCategory: "Semua",
+            textSize: "normal",
+            useSimpleJargon: false,
+            isReading: false,
+            whatsappPhone: ""
+        };
+
+        const minDateMs = new Date("2026-06-25").getTime();
+        const maxDateMs = new Date("2027-04-10").getTime();
+        const totalSimSpan = maxDateMs - minDateMs;
+        const categories = ["Semua", "Persiapan", "Inventarisasi", "Pengumuman", "Sanggahan", "Penilaian", "Musyawarah", "Administrasi", "Pembayaran", "Sertifikasi"];
+
+        // --- HELPERS ---
+        function getDaysBetween(start, end) {
+            const s = new Date(start); const e = new Date(end);
+            return Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1;
+        }
+
+        function formatIdDate(dateStr) {
+            return new Date(dateStr).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        function getTaskStatus(task, currentDateStr) {
+            if (task.end < currentDateStr) return "Selesai";
+            if (task.start <= currentDateStr && task.end >= currentDateStr) return "Berlangsung";
+            return "Belum Mulai";
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById("toast-alert");
+            const toastMsg = document.getElementById("toast-message");
+            toastMsg.innerText = msg;
+            toast.classList.remove("translate-y-20", "opacity-0", "pointer-events-none");
+            setTimeout(() => { toast.classList.add("translate-y-20", "opacity-0", "pointer-events-none"); }, 4000);
+        }
+
+        // --- RENDER FUNCTIONS ---
+        function updateSimDate() {
+            const simulatedDateMs = minDateMs + (state.simOffset / 100) * totalSimSpan;
+            state.simulatedDateStr = new Date(simulatedDateMs).toISOString().split('T')[0];
+            document.getElementById("sim-date-display").innerText = formatIdDate(state.simulatedDateStr);
+            renderMetrics();
+            renderTimelineList();
+            renderGantt();
+            updateShareLink();
+        }
+
+        function renderMetrics() {
+            let completed = 0, active = 0, upcoming = 0;
+            let currentActiveTaskName = "Tidak Ada Kegiatan Aktif";
+
+            RAW_TIMELINE.forEach((task) => {
+                const status = getTaskStatus(task, state.simulatedDateStr);
+                if (status === "Selesai") completed++;
+                else if (status === "Berlangsung") {
+                    active++;
+                    currentActiveTaskName = state.useSimpleJargon ? task.simpleTitle : task.title;
+                } else upcoming++;
+            });
+
+            document.getElementById("stat-completed").innerText = completed;
+            document.getElementById("stat-active").innerText = active;
+            document.getElementById("stat-upcoming").innerText = upcoming;
+            document.getElementById("stat-total-days").innerText = getDaysBetween("2026-07-01", "2027-03-30") + " Hari Kerja";
+            document.getElementById("stat-current-task").innerText = currentActiveTaskName;
+            
+            const progressPct = Math.round((completed / RAW_TIMELINE.length) * 100);
+            document.getElementById("stat-progress").innerText = progressPct + "% Berjalan";
+            document.getElementById("stat-progress-sub").innerText = `${completed} dari ${RAW_TIMELINE.length} Kegiatan Selesai`;
+        }
+
+        function getTextStyles() {
+            if(state.textSize === 'large') return { title: 'text-xl font-extrabold', body: 'text-sm md:text-base leading-relaxed', head: 'text-2xl font-black' };
+            if(state.textSize === 'xl') return { title: 'text-2xl font-black', body: 'text-base md:text-lg leading-relaxed font-medium', head: 'text-3xl font-black' };
+            return { title: 'text-lg font-bold', body: 'text-xs md:text-sm', head: 'text-xl font-black' }; // normal
+        }
+
+        function renderTimelineList() {
+            const listEl = document.getElementById("timeline-list");
+            const styles = getTextStyles();
+            
+            const filtered = RAW_TIMELINE.filter(task => {
+                const titleText = state.useSimpleJargon ? task.simpleTitle : task.title;
+                const descText = state.useSimpleJargon ? task.simpleDesc : task.desc;
+                const matchesSearch = titleText.toLowerCase().includes(state.searchQuery) || descText.toLowerCase().includes(state.searchQuery);
+                const matchesCategory = state.filterCategory === "Semua" || task.category === state.filterCategory;
+                return matchesSearch && matchesCategory;
+            });
+
+            if(filtered.length === 0) {
+                listEl.innerHTML = `<div class="w-full bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400">Tidak ditemukan hasil yang cocok. Coba ubah pencarian.</div>`;
+                return;
+            }
+
+            let html = "";
+            filtered.forEach(task => {
+                const status = getTaskStatus(task, state.simulatedDateStr);
+                const isSelected = state.selectedTaskId === task.id;
+                const duration = getDaysBetween(task.start, task.end);
+                
+                let badgeColor = "bg-slate-100 text-slate-600";
+                let circleColor = "bg-slate-200 text-slate-500";
+                
+                if (status === "Berlangsung") {
+                    badgeColor = "bg-amber-100 text-amber-800 animate-pulse border border-amber-300";
+                    circleColor = "bg-amber-500 text-slate-900 shadow-lg shadow-amber-500/40";
+                } else if (status === "Selesai") {
+                    badgeColor = "bg-emerald-100 text-emerald-800";
+                    circleColor = "bg-emerald-500 text-white shadow-lg shadow-emerald-500/40";
+                }
+
+                // Perubahan style card agar menjadi item horizontal
+                const selClasses = isSelected ? "border-indigo-600 ring-2 ring-indigo-500/20 shadow-md transform -translate-y-1" : "border-slate-200 hover:border-slate-300 hover:shadow-sm opacity-90 hover:opacity-100";
+
+                html += `
+                <div data-id="${task.id}" class="timeline-card flex-shrink-0 w-[280px] sm:w-[320px] min-h-[200px] p-5 bg-white rounded-xl border transition-all duration-300 cursor-pointer snap-start flex flex-col gap-3 relative ${selClasses}">
+                    <div class="flex items-center justify-between z-10 border-b border-slate-100 pb-3">
+                        <span class="h-10 w-10 rounded-full font-black text-sm flex items-center justify-center ${circleColor}">${task.id}</span>
+                        <span class="text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${badgeColor}">${status === "Berlangsung" ? "📍 Sedang Berjalan" : status}</span>
+                    </div>
+                    
+                    <div class="flex-1 mt-1">
+                        <span class="text-[10px] font-bold px-2 py-0.5 bg-slate-100 rounded text-slate-500 uppercase tracking-wider mb-2 inline-block">${task.category}</span>
+                        <h3 class="${styles.title} text-slate-900 leading-snug line-clamp-2" title="${state.useSimpleJargon ? task.simpleTitle : task.title}">
+                            ${state.useSimpleJargon ? task.simpleTitle : task.title}
+                        </h3>
+                        <p class="text-slate-500 ${styles.body} mt-2 line-clamp-2">${state.useSimpleJargon ? task.simpleDesc : task.desc}</p>
+                    </div>
+                    
+                    <div class="text-xs text-slate-500 mt-auto pt-3 border-t border-slate-100 flex justify-between items-center">
+                        <span class="font-medium">📅 ${formatIdDate(task.start)}</span>
+                        <span class="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">⏱️ ${duration} Hari</span>
+                    </div>
+                </div>`;
+            });
+
+            listEl.innerHTML = html;
+
+            // Optional: Jika ingin kartu yang dipilih otomatis bergeser ke tengah layar
+            setTimeout(() => {
+                const selectedCard = listEl.querySelector('.border-indigo-600');
+                if (selectedCard) {
+                    selectedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            }, 50);
+        }
+
+        function renderDetailPanel() {
+            const task = RAW_TIMELINE.find(t => t.id === state.selectedTaskId);
+            const styles = getTextStyles();
+            const panelEl = document.getElementById("detail-panel");
+            
+            const btnVoiceText = state.isReading ? "⏹️ Hentikan Suara" : "🔊 Bacakan Suara";
+            const btnVoiceClass = state.isReading ? "bg-red-500 text-white animate-pulse" : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100";
+
+            let checklistHtml = task.checklist.map(item => `
+                <li class="flex items-start gap-2 ${styles.body} text-slate-600">
+                    <span class="text-emerald-500 font-bold mt-0.5">✔</span><span>${item}</span>
+                </li>
+            `).join('');
+
+            let highlightHtml = task.highlight ? `
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 text-sm md:text-base text-amber-950 mt-6 shadow-sm">
+                    <strong class="block text-amber-900 font-bold mb-1">💡 Hati-hati Masa Sanggah Terbatas!</strong>
+                    Segera periksa nama, luas tanah, tanaman, dan bangunan Anda yang tertera di papan desa. Anda hanya punya waktu 14 hari kerja untuk mengajukan perbaikan sebelum harga resmi ditaksir KJPP!
+                </div>` : '';
+
+            panelEl.innerHTML = `
+                <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+                    <span class="text-sm font-bold text-slate-400 uppercase tracking-wider">Detail Kegiatan Lengkap #${task.id}</span>
+                    <button onclick="handleVoiceRead()" class="px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition-all ${btnVoiceClass}">
+                        <span>${btnVoiceText}</span>
+                    </button>
+                </div>
+                <span class="text-xs font-bold px-3 py-1.5 bg-slate-100 rounded text-slate-600 uppercase tracking-wider">${task.category}</span>
+                <h3 class="${styles.head} text-slate-900 mt-3 mb-4 leading-snug">${state.useSimpleJargon ? task.simpleTitle : task.title}</h3>
+                
+                <div class="flex items-center gap-3 bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
+                    <span class="text-2xl">📅</span>
+                    <div>
+                        <div class="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Rentang Waktu Kegiatan</div>
+                        <div class="text-sm md:text-base font-bold text-slate-800">${formatIdDate(task.start)} ${task.start !== task.end ? 's.d '+formatIdDate(task.end) : ''}</div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Maksud & Penjelasan Kegiatan:</h4>
+                        <p class="${styles.body} text-slate-700 leading-relaxed bg-indigo-50/25 p-4 rounded-xl border border-indigo-100/40">${state.useSimpleJargon ? task.simpleDesc : task.desc}</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pasal / Aturan Hukum:</h4>
+                        <div class="inline-flex items-center gap-1.5 text-xs md:text-sm text-purple-900 font-semibold bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-100">⚖️ ${task.law}</div>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Checklist Berkas/Tindakan Warga:</h4>
+                        <ul class="space-y-3">${checklistHtml}</ul>
+                    </div>
+                    ${highlightHtml}
+                </div>
+            `;
+            updateShareLink(); // refresh link text on task change
+        }
+
+        function renderGantt() {
+            const ganttEl = document.getElementById("gantt-rows");
+            let html = "";
+            const tMin = new Date("2026-07-01").getTime();
+            const tMax = new Date("2027-03-31").getTime();
+            const tSpan = tMax - tMin;
+
+            RAW_TIMELINE.forEach(task => {
+                const status = getTaskStatus(task, state.simulatedDateStr);
+                const start = new Date(task.start).getTime();
+                const end = new Date(task.end).getTime();
+                
+                const left = ((start - tMin) / tSpan) * 100;
+                const width = Math.max(2, ((end - start) / tSpan) * 100);
+                
+                let barColor = "bg-slate-200";
+                if (status === "Berlangsung") barColor = "bg-amber-500 ring-2 ring-amber-300 ring-offset-1 animate-pulse";
+                if (status === "Selesai") barColor = "bg-emerald-500";
+
+                const titleText = state.useSimpleJargon ? task.simpleTitle : task.title;
+
+                html += `
+                <div class="grid grid-cols-10 items-center text-xs py-2.5 hover:bg-slate-50/80 transition-colors">
+                    <div class="col-span-3 text-left pl-4 font-semibold text-slate-800 border-r border-slate-200 pr-2 truncate">${task.id}. ${titleText}</div>
+                    <div class="col-span-7 relative h-6 w-full px-1">
+                        <div onclick="selectTask(${task.id}); switchTab('timeline');" style="left: ${left}%; width: ${width}%" class="absolute h-4 top-1 rounded-full ${barColor} shadow-sm cursor-pointer transition-all duration-300" title="${titleText}"></div>
+                    </div>
+                </div>`;
+            });
+            ganttEl.innerHTML = html;
+        }
+
+        function renderSanggahGuide() {
+            const btnsEl = document.getElementById("scenario-buttons");
+            const detailEl = document.getElementById("scenario-detail");
+            
+            let btnsHtml = "";
+            SANGGAHAN_SCENARIOS.forEach(sc => {
+                const isActive = state.activeScenario === sc.id;
+                const classes = isActive ? "border-indigo-600 bg-indigo-50/30 ring-2 ring-indigo-500/10 shadow-sm" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50";
+                btnsHtml += `
+                <button onclick="setScenario('${sc.id}')" class="p-4 rounded-xl border text-left transition-all duration-150 ${classes}">
+                    <div class="p-1.5 bg-white rounded-lg shadow-sm border border-slate-100 w-fit mb-3">${sc.icon}</div>
+                    <h4 class="font-bold text-slate-900 text-sm leading-snug">${sc.title}</h4>
+                </button>`;
+            });
+            btnsEl.innerHTML = btnsHtml;
+
+            const sc = SANGGAHAN_SCENARIOS.find(s => s.id === state.activeScenario);
+            let stepsHtml = sc.action.map((step, idx) => `
+                <div class="flex gap-3 text-xs md:text-sm text-slate-700 leading-relaxed">
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center">${idx + 1}</span>
+                    <p class="pt-0.5">${step}</p>
+                </div>
+            `).join('');
+
+            detailEl.innerHTML = `
+                <div class="flex items-start gap-4">
+                    <div class="p-2.5 bg-indigo-50 rounded-xl text-indigo-600 hidden sm:block">${sc.icon}</div>
+                    <div class="flex-1">
+                        <span class="text-xs text-indigo-700 font-bold uppercase tracking-wider">Kasus / Isu Utama</span>
+                        <h4 class="text-lg font-bold text-slate-950 mt-1 mb-2">${sc.title}</h4>
+                        <p class="text-sm text-slate-600 leading-relaxed mb-6">${sc.issue}</p>
+                        <span class="text-xs text-emerald-800 font-bold uppercase tracking-wider block mb-3">🛡️ Alur Solusi & Langkah Tindakan Warga / Pelaksana</span>
+                        <div class="space-y-3">${stepsHtml}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- ACTIONS & EVENTS ---
+        function switchTab(tabId) {
+            state.activeTab = tabId;
+            document.querySelectorAll(".tab-pane").forEach(el => el.classList.add("hidden"));
+            document.getElementById("tab-" + tabId).classList.remove("hidden");
+            
+            document.querySelectorAll(".tab-btn").forEach(btn => {
+                if(btn.dataset.tab === tabId) {
+                    btn.classList.add("border-indigo-600", "text-indigo-600", "bg-indigo-50/40");
+                    btn.classList.remove("border-transparent", "text-slate-500", "hover:text-slate-800", "hover:bg-slate-100");
+                } else {
+                    btn.classList.remove("border-indigo-600", "text-indigo-600", "bg-indigo-50/40");
+                    btn.classList.add("border-transparent", "text-slate-500", "hover:text-slate-800", "hover:bg-slate-100");
+                }
+            });
+        }
+
+        function selectTask(id) {
+            state.selectedTaskId = id;
+            renderTimelineList();
+            renderDetailPanel();
+        }
+
+        function setScenario(id) {
+            state.activeScenario = id;
+            renderSanggahGuide();
+        }
+
+        function updateShareLink() {
+            const task = RAW_TIMELINE.find(t => t.id === state.selectedTaskId);
+            const title = state.useSimpleJargon ? task.simpleTitle : task.title;
+            const desc = state.useSimpleJargon ? task.simpleDesc : task.desc;
+            
+            const msg = `Halo Bapak/Ibu Warga Desa, berikut adalah Informasi Penting Terkini mengenai Proyek Pengadaan Tanah per Tanggal ${formatIdDate(state.simulatedDateStr)}.\n\n📌 *Tahap Berjalan:* ${title}\n📅 *Jadwal:* ${formatIdDate(task.start)} s/d ${formatIdDate(task.end)}\n📝 *Keterangan:* ${desc}\n\nSilakan periksa hak dan kelengkapan berkas Anda. Untuk panduan lengkap sengketa/sanggahan, silakan hubungi tim lapangan.`;
+            
+            document.getElementById("wa-preview").innerText = msg;
+            
+            const cleanPhone = state.whatsappPhone.replace(/[^0-9]/g, '');
+            document.getElementById("wa-link").href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+        }
+
+        function resetSlider() {
+            document.getElementById("sim-slider").value = 0;
+            state.simOffset = 0;
+            updateSimDate();
+        }
+
+        function handleVoiceRead() {
+            if (!('speechSynthesis' in window)) { showToast("❌ Fitur suara tidak didukung browser ini."); return; }
+            
+            if (state.isReading) {
+                window.speechSynthesis.cancel();
+                state.isReading = false;
+                renderDetailPanel();
+                showToast("🔊 Pembaca audio dihentikan.");
+            } else {
+                window.speechSynthesis.cancel();
+                const task = RAW_TIMELINE.find(t => t.id === state.selectedTaskId);
+                const title = state.useSimpleJargon ? task.simpleTitle : task.title;
+                const desc = state.useSimpleJargon ? task.simpleDesc : task.desc;
+                const textToRead = `${title}. Penjelasan: ${desc}`;
+
+                const utterance = new SpeechSynthesisUtterance(textToRead);
+                utterance.lang = 'id-ID';
+                utterance.rate = 0.95;
+                utterance.onend = () => { state.isReading = false; renderDetailPanel(); };
+                utterance.onerror = () => { state.isReading = false; renderDetailPanel(); };
+                
+                state.isReading = true;
+                renderDetailPanel();
+                window.speechSynthesis.speak(utterance);
+                showToast("🔊 Membaca informasi tahapan...");
+            }
+        }
+
+        function updateAccessibilityStyles() {
+            const wrap = document.getElementById("app-wrapper");
+            wrap.className = state.textSize === 'xl' ? 'text-xl' : '';
+            
+            document.querySelectorAll(".ts-btn").forEach(btn => {
+                btn.classList.remove("bg-slate-950", "text-white", "bg-white/60", "hover:bg-white");
+                const isMatch = btn.id === `btn-ts-${state.textSize}`;
+                if(isMatch) btn.classList.add("bg-slate-950", "text-white");
+                else btn.classList.add("bg-white/60", "hover:bg-white");
+            });
+
+            const jbtn = document.getElementById("btn-toggle-jargon");
+            if(state.useSimpleJargon) {
+                jbtn.classList.add("bg-slate-900", "text-white");
+                jbtn.classList.remove("bg-white/80", "hover:bg-white", "text-slate-900");
+                jbtn.innerText = "✨ Mode Sederhana: Aktif";
+            } else {
+                jbtn.classList.remove("bg-slate-900", "text-white");
+                jbtn.classList.add("bg-white/80", "hover:bg-white", "text-slate-900");
+                jbtn.innerText = "😊 Gunakan Bahasa Sederhana";
+            }
+            
+            // Re-render components relying on jargon/text size
+            renderMetrics();
+            renderTimelineList();
+            renderDetailPanel();
+            renderGantt();
+        }
+
+        // --- INIT & EVENT LISTENERS ---
+        document.addEventListener("DOMContentLoaded", () => {
+            // Populate category dropdown
+            const catEl = document.getElementById("filter-category");
+            categories.forEach(c => {
+                const opt = document.createElement("option");
+                opt.value = c; opt.innerText = c;
+                catEl.appendChild(opt);
+            });
+
+            // Slider Listeners
+            const slider = document.getElementById("sim-slider");
+            slider.addEventListener("input", (e) => {
+                state.simOffset = parseInt(e.target.value);
+                updateSimDate();
+            });
+
+            // Filter Listeners
+            document.getElementById("search-input").addEventListener("input", (e) => {
+                state.searchQuery = e.target.value.toLowerCase();
+                renderTimelineList();
+            });
+            document.getElementById("filter-category").addEventListener("change", (e) => {
+                state.filterCategory = e.target.value;
+                renderTimelineList();
+            });
+
+            // Timeline Card Click Delegation
+            document.getElementById("timeline-list").addEventListener("click", (e) => {
+                const card = e.target.closest(".timeline-card");
+                if(card) selectTask(parseInt(card.dataset.id));
+            });
+
+            // Tabs Listeners
+            document.querySelectorAll(".tab-btn").forEach(btn => {
+                btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+            });
+
+            // Accessibility Listeners
+            document.getElementById("btn-ts-normal").addEventListener("click", () => { state.textSize = "normal"; updateAccessibilityStyles(); showToast("Huruf ukuran normal"); });
+            document.getElementById("btn-ts-large").addEventListener("click", () => { state.textSize = "large"; updateAccessibilityStyles(); showToast("Huruf ukuran besar"); });
+            document.getElementById("btn-ts-xl").addEventListener("click", () => { state.textSize = "xl"; updateAccessibilityStyles(); showToast("Huruf ukuran sangat besar"); });
+            
+            document.getElementById("btn-toggle-jargon").addEventListener("click", () => { 
+                state.useSimpleJargon = !state.useSimpleJargon; 
+                updateAccessibilityStyles(); 
+                showToast(state.useSimpleJargon ? "Beralih ke Bahasa Sederhana Rakyat" : "Beralih ke Bahasa Formal Hukum");
+            });
+
+            // Share Listeners
+            document.getElementById("wa-phone").addEventListener("input", (e) => {
+                state.whatsappPhone = e.target.value;
+                updateShareLink();
+            });
+
+            // Initial Render
+            updateSimDate();
+            renderSanggahGuide();
+            updateAccessibilityStyles();
+        });
+
+    </script>
+</body>
+</html>
